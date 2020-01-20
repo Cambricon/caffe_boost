@@ -17,6 +17,7 @@ function usage
     echo ""
     echo "  Example:"
     echo "      <imagenet> $0 imagenet ../dataset/imagenet/val.txt ../dataset/imagenet"
+    echo "      <imagenet_2015> $0 imagenet ../dataset/imagenet_2015/val.txt ../dataset/imagenet_2015"
     echo "      <voc> $0 voc ../dataset/VOC2012/ImageSets/Main/val.txt ../dataset/VOC2012/JPEGImages"
     echo "      <coco> $0 coco ../dataset/COCO/val2017"
 }
@@ -41,7 +42,7 @@ function checkValidImage
 
 cur_path=$(dirname $(readlink -f $0))
 checkPath $2
-if [[ "$1" == "imagenet" || "$1" == "voc" ]]; then
+if [[ "$1" == "imagenet" || "$1" == "imagenet_2015" || "$1" == "voc" ]]; then
     if [ $# -ne 3 ]; then
         echo "[Error] The number of parameters should be 3 for imagenet and voc"
         usage
@@ -59,16 +60,29 @@ if [[ "$1" == "imagenet" || "$1" == "voc" ]]; then
 
         cp $cur_path/imagenet_val $cur_path/../examples/clas_offline_multicore/file_list
         cp $cur_path/imagenet_val $cur_path/../examples/clas_online_multicore/file_list
-        cp $cur_path/imagenet_val $cur_path/../examples/clas_offline_singlecore/file_list
+        cp $cur_path/imagenet_val $cur_path/../examples/clas_offline_singlecore/file_list 
         cp $cur_path/imagenet_val $cur_path/../examples/clas_online_singlecore/file_list
     fi
 
+    # imagenet_2015
+    if [ "$1" == "imagenet_2015" ]; then
+        # fill the full path for image
+        sed -n "1,1000s!^!$image_path/!w $cur_path/imagenet_2015_val" $2
+        checkValidImage $cur_path/imagenet_2015_val
+
+        cp $cur_path/imagenet_2015_val $cur_path/../examples/clas_offline_multicore/file_list_2015
+        cp $cur_path/imagenet_2015_val $cur_path/../examples/clas_online_multicore/file_list_2015
+        cp $cur_path/imagenet_2015_val $cur_path/../examples/clas_offline_singlecore/file_list_2015 
+        cp $cur_path/imagenet_2015_val $cur_path/../examples/clas_online_singlecore/file_list_2015
+    fi
+    
     # voc
     if [ "$1" == "voc" ]; then
         sed -n "s!^!$image_path/!;1,1000s/$/.jpg/w $cur_path/voc_val" $2
         checkValidImage $cur_path/voc_val
 
         cp $cur_path/voc_val $cur_path/../examples/ssd/file_list
+        cp $cur_path/voc_val $cur_path/../examples/rfcn/file_list
         cp $cur_path/voc_val $cur_path/../examples/yolo_v2/file_list
     fi
 elif [ "$1" == "coco" ]; then

@@ -12,7 +12,7 @@ Caffe, at its core, is written in C++. It is possible to use the C++ API of Caff
 
 ## Presentation
 
-A simple C++ code is proposed in`examples/clas_online_singlecore/clas_online_singlecore.cpp`. 
+A simple C++ code is proposed in`examples/clas_online_singlecore/clas_online_singlecore.cpp`.
 For the sake of simplicity, this example does not support oversampling of a single sample nor batching of multiple independent samples. This example is not trying to reach the maximum possible classification throughput on
 a system, but special care was given to avoid unnecessary pessimization while keeping the code readable.
 
@@ -24,24 +24,25 @@ The C++ example is built automatically when compiling Caffe. To compile Caffe yo
 
 You need to prepare the requisites as described in the README.md file at caffe_boost directory before running the example. To run the example, we have created a script to simplify the process, i.e. `run_all_online_sc.sh`. The command to execute the script is as follows:
 ```
-./run_all_online_sc.sh args
+./run_all_online_sc.sh args1 args2
 ```
-where `args` has two options: 0 or 1, 0 represents that all classification networks run with float16 data format and 1 represents that all classification networks run with int8 data format. 
+where `args1` has two options: 0 or 1, 0 represents that detection networks run with int16 data format and 1 represents that all detection networks run with int8 data format.
+
+where `args2` has two options: MLU270 or MLU220, MLU270 represents that detection networks run on MLU270 device and MLU220 represents that all detection networks run on MLU220 device.
 
 The output for one of the networks should look like this:
 
 ```
-running alexnet online - float16,dense...
+====================================================
+running resnet50 online - int8,...
 ----------------------
-multiple core
-using prototxt: some.prototxt
-using model:    some.caffemodel
-data_parallel:  8,  model_parallel:  1  thread_num:  4
+single core
+using prototxt: resnet50.prototxt
+using model:    resnet50.caffemodel
+core_version: MLU270, preprocess_option: 1
 running online test...
-Global accuracy : 
-accuracy1: 0.558 (558/1000)
-accuracy5: 0.788 (788/1000)
-Hardware fps: 1339.75
-End2end throughput fps: 227.9
-
+Global accuracy :
+top1: 0.7477 (37385/50000)
+top5: 0.92074 (46037/50000)
+End2end throughput fps: 25.0309
 ```

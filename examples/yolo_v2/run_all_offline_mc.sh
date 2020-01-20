@@ -1,14 +1,15 @@
 #!/bin/bash
-# Parameter1 int8_mode: 1-int8; 0-float16
+# Parameter1 quantize_type: 1-int8; 0-int16
+# Parameter2 core_version: MLU270; MLU220
 
 usage()
 {
     echo "Usage:"
-    echo "  $0 [0|1]"
+    echo "  $0 [0|1] [MLU220|MLU270]"
     echo ""
     echo "  Parameter description:"
-    echo "    0: run all networks with float16"
-    echo "    1: run all networks with int8"
+    echo "    parameter1: int8 mode or int16 mode. 0:int16, 1:int8"
+    echo "    parameter2: core version: MLU270 or MLU220"
 }
 
 checkFile()
@@ -20,34 +21,48 @@ checkFile()
     fi
 }
 
+#used to enable Bangop or not, default is disabled
+bang_option=1
+core_version=$2
+
 do_run()
 {
     echo "----------------------"
     echo "multiple core"
     echo "using prototxt: $proto_file"
     echo "using model:    $model_file"
-    echo "data_parallel:  $dp,  model_parallel:  $mp,  thread_num:  ${thread_num}"
+    echo "batchsize:  $batchsize,  core_number:  $core_number"
 
     #first remove any offline model
     /bin/rm offline.cambricon* &> /dev/null
-
-    log_file=$(echo $proto_file | sed 's/prototxt$/log/' | sed 's/^.*\///')
+    /bin/rm -r result &> /dev/null
+    if [[ "$bang_option" == "0" ]]; then
+      log_file=$(echo $proto_file | sed 's/prototxt$/log/' | sed 's/^.*\///')
+    else
+      log_file=$(echo $proto_file | sed 's/prototxt$/log_Bangop/' | sed 's/^.*\///')
+    fi
     echo > $CURRENT_DIR/$log_file
 
-    genoff_cmd="$CAFFE_DIR/build/tools/caffe${SUFFIX} genoff -model $proto_file -weights $model_file -mcore MLU100 -model_parallel $mp &>> $CURRENT_DIR/$log_file"
+    genoff_cmd="$CAFFE_DIR/build/tools/caffe${SUFFIX} genoff -model $proto_file -weights $model_file -mcore $core_version -Bangop $bang_option"
+    concurrent_genoff=" -batchsize $batchsize -core_number $core_number -simple_compile 1 &>> $CURRENT_DIR/$log_file"
+    genoff_cmd="$genoff_cmd $concurrent_genoff"
 
     run_cmd="$CAFFE_DIR/build/examples/yolo_v2/yolov2_offline_multicore$SUFFIX \
                   -offlinemodel $CURRENT_DIR/offline.cambricon \
                   -images $CURRENT_DIR/$FILE_LIST \
                   -labels $CURRENT_DIR/label_map.txt \
-                  -dataparallel $dp \
-                  -threads ${thread_num} \
-                  -dump 1 &>> $CURRENT_DIR/$log_file"
+                  -dump 1 \
+                  -outputdir ${CURRENT_DIR}/output \
+                  -Bangop ${bang_option} \
+                  -preprocess_option 4"
+    concurrent_run="-simple_compile 1 &>> $CURRENT_DIR/$log_file"
+    run_cmd="$run_cmd $concurrent_run"
 
-    check_cmd="python $CAFFE_DIR/scripts/meanAP_VOC.py $CURRENT_DIR/$FILE_LIST $CURRENT_DIR/ $VOC_PATH &>> $CURRENT_DIR/$log_file &>> $CURRENT_DIR/$log_file"
+    check_cmd="python $CAFFE_DIR/scripts/meanAP_VOC.py $CURRENT_DIR/$FILE_LIST $CURRENT_DIR/output $VOC_PATH &>> $CURRENT_DIR/$log_file &>> $CURRENT_DIR/$log_file"
 
     echo "genoff_cmd: $genoff_cmd" &>> $CURRENT_DIR/$log_file
     echo "run_cmd: $run_cmd" &>> $CURRENT_DIR/$log_file
+    echo "convert_cmd: $convert_cmd" &>> $CURRENT_DIR/$log_file
     echo "check_cmd: $check_cmd" &>> $CURRENT_DIR/$log_file
 
     echo "generating offline model..."
@@ -56,6 +71,7 @@ do_run()
     if [[ "$?" -eq 0 ]]; then
         echo "running offline test..."
         eval "$run_cmd"
+        #tail -n 3 $CURRENT_DIR/$log_file
         grep "^Total execution time: " -A 2 $CURRENT_DIR/$log_file
         eval "$check_cmd"
         tail -n 1 $CURRENT_DIR/$log_file
@@ -64,30 +80,29 @@ do_run()
     fi
 }
 
-desp_list=(
-    dense
-    sparse
+bscn_list=(
+  # '1  1 '
+  # '8  8 '
+  # '8  4 '
+   '16 16'
+  # '32 32'
+  # '64 32'
 )
-
-batch_list=(
-    1batch
-    # 2batch
-    # 4batch
-)
-
-dpmp_list=(
-    '8 1'
-    # '1 2'
-    # '2 4'
-    # '4 8'
-)
+if [[ 'MLU220' == $core_version ]]; then
+  bscn_list=(
+   #  '1  1'
+   #  '1  4'
+   #  '4  4'
+     '16  4'
+  )
+fi
 
 network_list=(
     yolov2
 )
 
 
-if [[ "$#" -ne 1 ]]; then
+if [[ "$#" -ne 2 ]]; then
     echo "[ERROR] Unknown parameter."
     usage
     exit 1
@@ -97,7 +112,7 @@ CURRENT_DIR=$(dirname $(readlink -f $0))
 
 # check caffe directory
 if [ -z "$CAFFE_DIR" ]; then
-    CAFFE_DIR=$CURRENT_DIR/../..
+    CAFFE_DIR=$CAFFE_DIR
 else
     if [ ! -d "$CAFFE_DIR" ]; then
         echo "[ERROR] Please check CAFFE_DIR."
@@ -106,48 +121,43 @@ else
 fi
 
 . $CAFFE_DIR/scripts/set_caffe_module_env.sh
-
-int8_mode=$1
+quantize_type=$1
 ds_name=""
-if [[ $int8_mode -eq 1 ]]; then
+if [[ $quantize_type -eq 1 ]]; then
     ds_name="int8"
-elif [[ $int8_mode -eq 0 ]]; then
-    ds_name="float16"
+elif [[ $quantize_type -eq 0 ]]; then
+    ds_name="int16"
 else
     echo "[ERROR] Unknown parameter."
     usage
     exit 1
 fi
-thread_num="4"
 
 /bin/rm *.jpg &> /dev/null
-/bin/rm 200*.txt &> /dev/null
+/bin/rm *00*.txt &> /dev/null
 /bin/rm *.log &> /dev/null
+/bin/rm -rf ${CURRENT_DIR}/output &> /dev/null
+mkdir -p ${CURRENT_DIR}/output &> /dev/null
 
 for network in "${network_list[@]}"; do
-    for desp in "${desp_list[@]}"; do
-        model_file=$CAFFE_MODELS_DIR/${network}/${network}_float16_${desp}.caffemodel
-        checkFile $model_file
-        if [ $? -eq 1 ]; then
-            continue
-        fi
+    model_file=$CAFFE_MODELS_DIR/${network}/${network}_${ds_name}_dense.caffemodel
+    checkFile $model_file
 
-        echo "===================================================="
-        echo "running ${network} offline - ${ds_name},${desp}..."
+    if [ $? -eq 1 ]; then
+        continue
+    fi
 
-        for batch in "${batch_list[@]}"; do
-            for proto_file in $CAFFE_MODELS_DIR/${network}/${network}_${ds_name}*${desp}_${batch}.prototxt; do
-                checkFile $proto_file
-                if [ $? -eq 1 ]; then
-                    continue
-                fi
-
-                for dpmp in "${dpmp_list[@]}"; do
-                    dp=${dpmp:0:1}
-                    mp=${dpmp:2:1}
-                    do_run
-                done
-            done
-        done
-    done
+    echo "===================================================="
+    echo "running ${network} offline - ${ds_name},..."
+	  for proto_file in $CAFFE_MODELS_DIR/${network}/${network}_${ds_name}*dense_1batch.prototxt; do
+	      checkFile $proto_file
+	      if [ $? -eq 1 ]; then
+		        continue
+	      fi
+	      for bscn in "${bscn_list[@]}"; do
+		        batchsize=${bscn:0:2}
+		        core_number=${bscn:3:2}
+		        do_run
+	      done
+	  done
 done

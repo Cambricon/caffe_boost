@@ -4,10 +4,10 @@
 usage()
 {
     echo "Usage:"
-    echo "  $0 [0|1]"
+    echo "  $0 [0|1] [MLU220|MLU270]"
     echo ""
     echo "  Parameter description:"
-    echo "    0: run all networks with float16"
+    echo "    0: run all networks with int16"
     echo "    1: run all networks with int8"
 }
 
@@ -16,9 +16,22 @@ checkFile()
     if [ -f $1 ]; then
         return 0
     else
+        echo $1
         return 1
     fi
 }
+
+if [[ "$#" -ne 2 ]]; then
+  echo "[ERROR] Unknown parameter."
+  usage
+  exit 1
+fi
+
+# config
+core_version=$2
+network_list=(
+    yolov3
+)
 
 do_run()
 {
@@ -26,6 +39,7 @@ do_run()
     echo "single core"
     echo "using prototxt: $proto_file"
     echo "using model:    $model_file"
+    echo "core version:   $core_version"
 
     #first remove any offline model
     /bin/rm offline.cambricon* &> /dev/null
@@ -33,16 +47,14 @@ do_run()
     log_file=$(echo $proto_file | sed 's/prototxt$/log/' | sed 's/^.*\///')
     echo > $CURRENT_DIR/$log_file
 
-    genoff_cmd="$CAFFE_DIR/build/tools/caffe${SUFFIX} genoff -model $proto_file -weights $model_file -mcore MLU100 &>> $CURRENT_DIR/$log_file"
+    genoff_cmd="$CAFFE_DIR/build/tools/caffe${SUFFIX} genoff -model $proto_file -weights $model_file -mcore $core_version &>> $CURRENT_DIR/$log_file"
 
     run_cmd="$CAFFE_DIR/build/examples/yolo_v3/yolov3_offline_singlecore$SUFFIX \
                  -offlinemodel $CURRENT_DIR/offline.cambricon \
                  -images $CURRENT_DIR/$FILE_LIST \
                  -outputdir $CURRENT_DIR/ \
-                  -bboxanchordir $bbox_anchor_path \
                  -labels $CURRENT_DIR/bbox_anchor/label_map_coco.txt \
-                 -confidence $confidence \
-                --dump 1 &>> $CURRENT_DIR/$log_file"
+                 --dump 1 &>> $CURRENT_DIR/$log_file"
 
     check_cmd="python $CAFFE_DIR/scripts/meanAP_COCO.py  --file_list $CURRENT_DIR/$FILE_LIST --result_dir $CURRENT_DIR/ --ann_dir  $COCO_PATH &>> $CURRENT_DIR/$log_file"
 
@@ -56,6 +68,7 @@ do_run()
     if [[ "$?" -eq 0 ]]; then
         echo "running offline test..."
         eval "$run_cmd"
+        #tail -n 3 $CURRENT_DIR/$log_file
         grep "^Total execution time: " -A 2 $CURRENT_DIR/$log_file
         eval "$check_cmd"
         tail -n 12 $CURRENT_DIR/$log_file
@@ -64,32 +77,11 @@ do_run()
     fi
 }
 
-desp_list=(
-    dense
-    sparse
-)
-
-batch_list=(
-    1batch
-    # 2batch
-    # 4batch
-)
-
-network_list=(
-    yolov3
-)
-
-if [[ "$#" -ne 1 ]]; then
-    echo "[ERROR] Unknown parameter."
-    usage
-    exit 1
-fi
-
 CURRENT_DIR=$(dirname $(readlink -f $0))
 
 # check caffe directory
 if [ -z "$CAFFE_DIR" ]; then
-    CAFFE_DIR=$CURRENT_DIR/../..
+    CAFFE_DIR=$CAFFE_DIR
 else
     if [ ! -d "$CAFFE_DIR" ]; then
         echo "[ERROR] Please check CAFFE_DIR."
@@ -107,7 +99,7 @@ ds_name=""
 if [[ $int8_mode -eq 1 ]]; then
     ds_name="int8"
 elif [[ $int8_mode -eq 0 ]]; then
-    ds_name="float16"
+    ds_name="int16"
 else
     echo "[ERROR] Unknown parameter."
     usage
@@ -119,25 +111,21 @@ fi
 /bin/rm *.log &> /dev/null
 
 for network in "${network_list[@]}"; do
-    for desp in "${desp_list[@]}"; do
-        model_file=$CAFFE_MODELS_DIR/${network}/${network}_float16_${desp}.caffemodel
-        checkFile $model_file
-        if [ $? -eq 1 ]; then
-            continue
-        fi
+   model_file=$CAFFE_MODELS_DIR/${network}/${network}_${ds_name}_dense.caffemodel
+   checkFile $model_file
+   if [ $? -eq 1 ]; then
+       continue
+   fi
 
-        echo "===================================================="
-        echo "running ${network} offline - ${ds_name},${desp}..."
+   echo "===================================================="
+   echo "running ${network} offline - ${ds_name},${desp}..."
 
-        for batch in "${batch_list[@]}"; do
-            for proto_file in $CAFFE_MODELS_DIR/${network}/${network}_${ds_name}*${desp}_${batch}.prototxt; do
-                checkFile $proto_file
-                if [ $? -eq 1 ]; then
-                    continue
-                fi
+   for proto_file in $CAFFE_MODELS_DIR/${network}/${network}_${ds_name}*dense_1batch.prototxt; do
+       checkFile $proto_file
+       if [ $? -eq 1 ]; then
+           continue
+       fi
 
-                do_run
-            done
-        done
-    done
+       do_run
+   done
 done
