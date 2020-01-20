@@ -6,15 +6,46 @@ Please clone Cambricon Caffe and Caffe Boost repository, download ImageNet, COCO
 
 ### Cambricon Caffe
 Please download [Cambricon Caffe](https://github.com/Cambricon/caffe) from repository:
+
+* **For serials of MLU100:**
+
+You need to switch to the master branch.
+
 ```
 git clone git@github.com:Cambricon/caffe.git
+git checkout master
 ```
+
+* **For serials of MLU270:**
+
+You need to switch to the cambricon_caffe_mlu270 branch.
+
+```
+git clone git@github.com:Cambricon/caffe.git
+git checkout cambricon_caffe_mlu270
+```
+
 Then build Cambricon Caffe. Please refer to instructions listed in Cambricon Caffe repository.
 
 ### Caffe Boost
 Please download [Caffe Boost](https://github.com/Cambricon/caffe_boost) from repository:
+
+* **For serials of MLU100:**
+
+You need to switch to the master branch first, and see the README.md for how to use it.
+
 ```
 git clone git@github.com:Cambricon/caffe_boost.git
+git checkout master
+```
+
+* **For serials of MLU270:**
+
+You need to switch to the cambricon_caffe_mlu270 branch first, and see the README.md for how to use it.
+
+```
+git clone git@github.com:Cambricon/caffe_boost.git
+git checkout cambricon_caffe_mlu270
 ```
 
 ### Datasets
