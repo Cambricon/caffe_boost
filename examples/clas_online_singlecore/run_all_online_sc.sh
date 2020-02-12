@@ -9,11 +9,10 @@
 usage()
 {
     echo "Usage:"
-    echo "  $0 [0|1]"
+    echo "  $0 [0|1] [MLU220|MLU270]"
     echo ""
     echo "  Parameter description:"
-    echo "    0: run all classification networks with float16"
-    echo "    1: run all classification networks with int8"
+    echo "    parameter1: int8 mode or int16 mode. 0:int16, 1:int8"
 }
 
 checkFile()
@@ -25,12 +24,38 @@ checkFile()
     fi
 }
 
+if [[ "$#" -ne 2 ]]; then
+  echo "[ERROR] Unknown parameter."
+  usage
+  exit 1
+fi
+
+# config
+core_version=$2
+
+network_list=(
+    googlenet
+    mobilenet_v1
+    mobilenet_v2
+    resnet101
+    resnet152
+    resnet18
+    resnet50
+    vgg16
+    vgg19
+    squeezenet_v1.0
+    squeezenet_v1.1
+    inception-v3
+    alexnet
+)
+
 do_run()
 {
     echo "----------------------"
     echo "single core"
     echo "using prototxt: $proto_file"
     echo "using model:    $model_file"
+    echo "core_version: $core_version,   preprocess_option: $preprocess_option"
 
     log_file=$(echo $proto_file | sed 's/prototxt$/log/' | sed 's/^.*\///')
     echo > $CURRENT_DIR/$log_file
@@ -38,55 +63,25 @@ do_run()
     run_cmd="$CAFFE_DIR/build/examples/clas_online_singlecore/clas_online_singlecore$SUFFIX  \
                   -model $proto_file \
                   -weights $model_file \
-                  -labels $CURRENT_DIR/synset_words.txt \
-                  -images $CURRENT_DIR/$FILE_LIST \
-                  -mcore MLU100 \
-	          -mmode MFUS &>> $CURRENT_DIR/$log_file"
+                  -labels $CURRENT_DIR/$synset \
+                  -images $CURRENT_DIR/$file_list \
+                  -preprocess_option $preprocess_option \
+                  -mcore $core_version \
+	                -mmode MFUS &>> $CURRENT_DIR/$log_file"
 
     echo "run_cmd: $run_cmd" &>> $CURRENT_DIR/$log_file
 
     echo "running online test..."
     eval "$run_cmd"
+    # tail -n 4 $CURRENT_DIR/$log_file
     grep "^Total execution time: " -A 4 $CURRENT_DIR/$log_file
 }
-
-desp_list=(
-    dense
-    sparse
-)
-
-batch_list=(
-    1batch
-    # 2batch
-    # 4batch
-)
-
-network_list=(
-    alexnet
-    googlenet
-    inception-v3
-    mobilenet
-    resnet101
-    resnet152
-    resnet18
-    resnet34
-    resnet50
-    squeezenet
-    vgg16
-    vgg19
-)
-
-if [[ "$#" -ne 1 ]]; then
-    echo "[ERROR] Unknown parameter."
-    usage
-    exit 1
-fi
 
 CURRENT_DIR=$(dirname $(readlink -f $0))
 
 # check caffe directory
 if [ -z "$CAFFE_DIR" ]; then
-    CAFFE_DIR=$CURRENT_DIR/../..
+    CAFFE_DIR=$CAFFE_DIR
 else
     if [ ! -d "$CAFFE_DIR" ]; then
         echo "[ERROR] Please check CAFFE_DIR."
@@ -101,7 +96,7 @@ ds_name=""
 if [[ $int8_mode -eq 1 ]]; then
     ds_name="int8"
 elif [[ $int8_mode -eq 0 ]]; then
-    ds_name="float16"
+    ds_name="int16"
 else
     echo "[ERROR] Unknown parameter."
     usage
@@ -112,25 +107,31 @@ fi
 /bin/rm *.log &> /dev/null
 
 for network in "${network_list[@]}"; do
-    for desp in "${desp_list[@]}"; do
-        model_file=$CAFFE_MODELS_DIR/${network}/${network}_float16_${desp}.caffemodel
-        checkFile $model_file
+    model_file=$CAFFE_MODELS_DIR/${network}/${network}_${ds_name}_dense.caffemodel
+    checkFile $model_file
+    if [ $? -eq 1 ]; then
+        continue
+    fi
+    file_list=$FILE_LIST
+    synset=synset_words.txt
+    if [ ${network} == 'alexnet' ]||[ ${network} == 'googlenet' ]||[ ${network} == 'squeezenet_v1.0' ]||[ ${network} == 'squeezenet_v1.1' ]; then
+      preprocess_option=2
+    elif [ ${network} == 'inception-v3' ]; then
+      preprocess_option=3
+      file_list=$FILE_LIST_2015
+      synset=synset_words_2015.txt
+    else
+      preprocess_option=1
+    fi
+    echo "===================================================="
+    echo "running ${network} online - ${ds_name}..."
+
+    for proto_file in $CAFFE_MODELS_DIR/${network}/${network}_${ds_name}*dense_1batch.prototxt; do
+        checkFile $proto_file
         if [ $? -eq 1 ]; then
             continue
         fi
 
-        echo "===================================================="
-        echo "running ${network} online - ${ds_name},${desp}..."
-
-        for batch in "${batch_list[@]}"; do
-            for proto_file in $CAFFE_MODELS_DIR/${network}/${network}_${ds_name}*${desp}_${batch}.prototxt; do
-                checkFile $proto_file
-                if [ $? -eq 1 ]; then
-                    continue
-                fi
-
-                do_run
-            done
-        done
+        do_run
     done
 done

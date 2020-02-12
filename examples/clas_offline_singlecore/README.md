@@ -22,25 +22,27 @@ The C++ example is built automatically when compiling Caffe. To compile Caffe yo
 
 You need to prepare the requisites as described in the README.md file at caffe_boost directory before running the example. To run the example, we have created a script to simplify the process, i.e. `run_all_offline_sc.sh`. The command to execute the script is as follows:
 ```
-./run_all_offline_sc.sh args
+./run_all_offline_sc.sh args1 args2
 ```
-where `args` has two options: 0 or 1, 0 represents that all classification networks run with float16 data format and 1 represents that all classification networks run with int8 data format. 
+where `args1` has two options: 0 or 1, 0 represents that detection networks run with int16 data format and 1 represents that all detection networks run with int8 data format.
+
+where `args2` has two options: MLU270 or MLU220, MLU270 represents that detection networks run on MLU270 device and MLU220 represents that all detection networks run on MLU220 device.
 
 The output for one of the networks should look like this:
 ```
 ====================================================
-running net offline - int8,dense...
+running resnet50 offline - int8,...
 ----------------------
 single core
-using prototxt: some.prototxt
-using model:    some.caffemodel
+using prototxt: resnet50.prototxt
+using model:    resnet50.caffemodel
+core_version: MLU270,  preprocess_option: 1
 generating offline model...
 running offline test...
-Global accuracy : 
-accuracy1: 0.553 (553/1000)
-accuracy5: 0.787 (787/1000)
-Hardware fps: 134.983
-End2end throughput fps: 63.8844
+Global accuracy :
+top1: 0.74894 (37447/50000)
+top5: 0.92082 (46041/50000)
+throughput: 210.757
+Latency: 4744.80
 ```
 This command also generates the offline model (`.cambricon` file), offline mode description (`.cambricon_twins` file) and `.log` files of all networks.
-

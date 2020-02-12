@@ -25,99 +25,108 @@ YOLOv3 can run a network with multiple cores in offline mode and single core in 
 ### multiple cores in offline mode
 
 ```
-./run_all_offline_mc.sh args
+./run_all_offline_mc.sh args1 args2
 ```
-Where `args` has two options: 0 or 1, 0 represents that YOLOv3 run with float16 data format and 1 represents that YOLOv3 run with int8 data format.
+Where the `args1` has two options: 0 or 1, 0 represents that YOLOv3 run with int16 data format and 1 represents that YOLOv3 run with int8 data format.
+
+where the `args2` has two options: MLU270 or MLU220, MLU270 represents that detection networks run on MLU270 device and MLU220 represents that all detection networks run on MLU220 device.
 
 The output should look like this:
 ```
 ====================================================
-running yolov3 offline - int8,dense...
+running yolov3 offline - int8...
 ----------------------
 multiple core
-using prototxt: some.prototxt
-using model:    some.caffemodel
-data_parallel:  8,  model_parallel:  1,  thread_num:  4
+using prototxt: yolov3_int8.prototxt
+using model:    yolov3_int8.caffemodel
+core version:   MLU270,  batchsize:  16,  core_number:  16
 generating offline model...
 running offline test...
-yolov3_detection() execution time: 1.92755e+07 us
-Hardware fps: 199.673
-End2end throughput fps: 51.8794
- Average Precision  (AP) @[ IoU=0.50:0.95 | area=   all | maxDets=100 ] = 0.292
- Average Precision  (AP) @[ IoU=0.50      | area=   all | maxDets=100 ] = 0.483
- Average Precision  (AP) @[ IoU=0.75      | area=   all | maxDets=100 ] = 0.327
- Average Precision  (AP) @[ IoU=0.50:0.95 | area= small | maxDets=100 ] = 0.076
- Average Precision  (AP) @[ IoU=0.50:0.95 | area=medium | maxDets=100 ] = 0.323
- Average Precision  (AP) @[ IoU=0.50:0.95 | area= large | maxDets=100 ] = 0.497
- Average Recall     (AR) @[ IoU=0.50:0.95 | area=   all | maxDets=  1 ] = 0.243
- Average Recall     (AR) @[ IoU=0.50:0.95 | area=   all | maxDets= 10 ] = 0.322
- Average Recall     (AR) @[ IoU=0.50:0.95 | area=   all | maxDets=100 ] = 0.324
- Average Recall     (AR) @[ IoU=0.50:0.95 | area= small | maxDets=100 ] = 0.080
- Average Recall     (AR) @[ IoU=0.50:0.95 | area=medium | maxDets=100 ] = 0.348
- Average Recall     (AR) @[ IoU=0.50:0.95 | area= large | maxDets=100 ] = 0.540
+yolov3_detection() execution time: 8.07997e+06 us
+throughput: 168.387
+Latency: 95019.45
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area=   all | maxDets=100 ] = 0.394
+ Average Precision  (AP) @[ IoU=0.50      | area=   all | maxDets=100 ] = 0.711
+ Average Precision  (AP) @[ IoU=0.75      | area=   all | maxDets=100 ] = 0.397
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area= small | maxDets=100 ] = 0.208
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area=medium | maxDets=100 ] = 0.445
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area= large | maxDets=100 ] = 0.555
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=   all | maxDets=  1 ] = 0.308
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=   all | maxDets= 10 ] = 0.473
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=   all | maxDets=100 ] = 0.491
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area= small | maxDets=100 ] = 0.286
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=medium | maxDets=100 ] = 0.537
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area= large | maxDets=100 ] = 0.642
 ```
 ### single core in offline mode
 
 ```
-./run_all_offline_sc.sh args
+./run_all_offline_sc.sh args1 args2
 ```
-Where `args` has two options: 0 or 1, 0 represents that YOLOv3 run with float16 data format and 1 represents that YOLOv3 run with int8 data format.
+Where the `args1` has two options: 0 or 1, 0 represents that YOLOv3 run with int16 data format and 1 represents that YOLOv3 run with int8 data format.
+
+where the `args2` has two options: MLU270 or MLU220, MLU270 represents that detection networks run on MLU270 device and MLU220 represents that all detection networks run on MLU220 device.
 
 The output should look like this:
 ```
 ====================================================
-running yolov3 offline - int8,dense...
+running yolov3 offline - int8,...
 ----------------------
 single core
-using prototxt: some.prototxt
-using model:    some.caffemodel
+using prototxt: yolov3_int8.prototxt
+using model:    yolov3_int8.caffemodel
+core version:   MLU270
 generating offline model...
 running offline test...
-Total execution time: 2.6009e+08 us
-Hardware fps: 8.81572
-End2end throughput fps: 3.84482
- Average Precision  (AP) @[ IoU=0.50:0.95 | area=   all | maxDets=100 ] = 0.292
- Average Precision  (AP) @[ IoU=0.50      | area=   all | maxDets=100 ] = 0.483
- Average Precision  (AP) @[ IoU=0.75      | area=   all | maxDets=100 ] = 0.327
- Average Precision  (AP) @[ IoU=0.50:0.95 | area= small | maxDets=100 ] = 0.076
- Average Precision  (AP) @[ IoU=0.50:0.95 | area=medium | maxDets=100 ] = 0.323
- Average Precision  (AP) @[ IoU=0.50:0.95 | area= large | maxDets=100 ] = 0.497
- Average Recall     (AR) @[ IoU=0.50:0.95 | area=   all | maxDets=  1 ] = 0.243
- Average Recall     (AR) @[ IoU=0.50:0.95 | area=   all | maxDets= 10 ] = 0.322
- Average Recall     (AR) @[ IoU=0.50:0.95 | area=   all | maxDets=100 ] = 0.324
- Average Recall     (AR) @[ IoU=0.50:0.95 | area= small | maxDets=100 ] = 0.080
- Average Recall     (AR) @[ IoU=0.50:0.95 | area=medium | maxDets=100 ] = 0.348
- Average Recall     (AR) @[ IoU=0.50:0.95 | area= large | maxDets=100 ] = 0.540
+Total execution time: 8.50237e+07 us
+mluTime time: 2.97418e+07 us
+throughput: 33.6227
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area=   all | maxDets=100 ] = 0.394
+ Average Precision  (AP) @[ IoU=0.50      | area=   all | maxDets=100 ] = 0.712
+ Average Precision  (AP) @[ IoU=0.75      | area=   all | maxDets=100 ] = 0.397
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area= small | maxDets=100 ] = 0.207
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area=medium | maxDets=100 ] = 0.445
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area= large | maxDets=100 ] = 0.556
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=   all | maxDets=  1 ] = 0.308
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=   all | maxDets= 10 ] = 0.472
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=   all | maxDets=100 ] = 0.492
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area= small | maxDets=100 ] = 0.286
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=medium | maxDets=100 ] = 0.538
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area= large | maxDets=100 ] = 0.642
 ```
 ### single core in online mode
 
 ```
-./run_all_online_sc.sh arg1 arg2
+./run_all_online_sc.sh args1 args2 args3
 ```
-Where the  `arg1` has two options: 0 or 1, 0 represents that YOLOv3 run with float16 data format and 1 represents that YOLOv3 run with int8 data format.
-Where the  `arg2` has two options: 1 or 2, 1 represents that YOLOv3 run layer by layer and 2 represents that YOLOv3 run fusion.
+Where the `args1` has two options: 0 or 1, 0 represents that YOLOv3 run with int16 data format and 1 represents that YOLOv3 run with int8 data format.
+
+Where the `args2` has two options: 1 or 2, 1 represents that YOLOv3 run layer by layer and 2 represents that YOLOv3 run fusion.
+
+where the `args3` has two options: MLU270 or MLU220, MLU270 represents that detection networks run on MLU270 device and MLU220 represents that all detection networks run on MLU220 device.
 
 The output should look like this:
 ```
 ====================================================
-running yolov3 offline - int8,dense...
+running yolov3 offline - int8,...
 ----------------------
 single core
-using prototxt: some.prototxt
-using model:    some.caffemodel
+using prototxt: yolov3_int8.prototxt
+using model:    yolov3_int8.caffemodel
+core version:   MLU270
 running online test...
-yolov3_detection() execution time: 2.28554e+08 us
-End2end throughput fps: 4.37533
- Average Precision  (AP) @[ IoU=0.50:0.95 | area=   all | maxDets=100 ] = 0.292
- Average Precision  (AP) @[ IoU=0.50      | area=   all | maxDets=100 ] = 0.483
- Average Precision  (AP) @[ IoU=0.75      | area=   all | maxDets=100 ] = 0.327
- Average Precision  (AP) @[ IoU=0.50:0.95 | area= small | maxDets=100 ] = 0.076
- Average Precision  (AP) @[ IoU=0.50:0.95 | area=medium | maxDets=100 ] = 0.323
- Average Precision  (AP) @[ IoU=0.50:0.95 | area= large | maxDets=100 ] = 0.497
- Average Recall     (AR) @[ IoU=0.50:0.95 | area=   all | maxDets=  1 ] = 0.243
- Average Recall     (AR) @[ IoU=0.50:0.95 | area=   all | maxDets= 10 ] = 0.322
- Average Recall     (AR) @[ IoU=0.50:0.95 | area=   all | maxDets=100 ] = 0.324
- Average Recall     (AR) @[ IoU=0.50:0.95 | area= small | maxDets=100 ] = 0.080
- Average Recall     (AR) @[ IoU=0.50:0.95 | area=medium | maxDets=100 ] = 0.348
- Average Recall     (AR) @[ IoU=0.50:0.95 | area= large | maxDets=100 ] = 0.540
+yolov3_detection() execution time: 7.83434e+07 us
+throughput: 33.6923
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area=   all | maxDets=100 ] = 0.394
+ Average Precision  (AP) @[ IoU=0.50      | area=   all | maxDets=100 ] = 0.712
+ Average Precision  (AP) @[ IoU=0.75      | area=   all | maxDets=100 ] = 0.397
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area= small | maxDets=100 ] = 0.207
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area=medium | maxDets=100 ] = 0.445
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area= large | maxDets=100 ] = 0.556
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=   all | maxDets=  1 ] = 0.308
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=   all | maxDets= 10 ] = 0.472
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=   all | maxDets=100 ] = 0.492
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area= small | maxDets=100 ] = 0.286
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=medium | maxDets=100 ] = 0.538
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area= large | maxDets=100 ] = 0.642
 ```
